@@ -1,6 +1,7 @@
 GRADLE   := ./gradlew
 JAR      := app/build/libs/app.jar
 DB       := scripts/oracle-db.sh
+SVC      := scripts/service.sh
 ENV_FILE ?= $(HOME)/.config/preferences-service/oracle.env
 # The application login's password, read from the local password file into the app's environment only.
 DB_ENV    = PREF_DB_PASSWORD="$$(sed -n 's/^APP_USER_PASSWORD=//p' $(ENV_FILE))"
@@ -9,8 +10,10 @@ export SQL FRUIT
 
 .DEFAULT_GOAL := help
 .PHONY: help build test run jar run-jar clean deps \
+        start stop restart status logs swagger api \
         db-start db-stop db-restart db-status db-logs db-remove db-recreate \
-        db-sql db-query db-tables db-fruits db-users db-retire db-activate db-drop-tables db-check
+        db-sql db-query db-tables db-fruits db-users db-retire db-activate db-drop-tables db-check \
+        db-seed-users db-remove-users
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
@@ -35,6 +38,30 @@ clean: ## Delete build outputs
 
 deps: ## Show the runtime dependency tree
 	$(GRADLE) :app:dependencies --configuration runtimeClasspath
+
+# --- The service in the background (log app/build/service.log) ----------------------------------------------------
+
+start: ## Start the database and the service in the background; wait until healthy
+	@$(SVC) start
+
+stop: ## Stop the background service (the database keeps running)
+	@$(SVC) stop
+
+restart: ## Rebuild and restart the background service
+	@$(SVC) restart
+
+status: ## Show whether the service and the database are running
+	@$(SVC) status
+	@$(DB) status
+
+logs: ## Follow the service's log (Ctrl+C stops following, not the service)
+	@$(SVC) logs
+
+swagger: ## Start the service if needed, then open Swagger UI in the browser
+	@$(SVC) swagger
+
+api: ## Start the service if needed, then list its endpoints
+	@$(SVC) api
 
 # --- The local Oracle container ------------------------------------------------------------------------------------
 
@@ -84,3 +111,9 @@ db-drop-tables: ## Delete the 4 tables and their data (make db-drop-tables CONFI
 	@$(DB) drop-tables $(if $(filter yes,$(CONFIRM)),--yes)
 
 db-check: db-tables db-fruits ## Show tables and fruits (a quick look after a start)
+
+db-seed-users: ## Add the sample users alice, bob and carol (skips any that exist)
+	@scripts/seed-users.sh
+
+db-remove-users: ## Delete ALL users with their settings (make db-remove-users CONFIRM=yes)
+	@scripts/remove-users.sh $(if $(filter yes,$(CONFIRM)),--yes)
