@@ -16,10 +16,19 @@ dependencies {
 
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.actuator)
+    // JPA (Hibernate, Spring Data JPA) and JDBC (JdbcTemplate, HikariCP connection pool)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.jdbc)
+    // Oracle JDBC driver (thin, pure Java, no Oracle client needed); the version comes from the Spring Boot BOM
+    runtimeOnly(libs.oracle.ojdbc11)
     implementation(libs.guava)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.spring.boot.starter.webmvc.test)
+    // Tests that load the full context start a throwaway Oracle container (Docker required)
+    testImplementation(libs.spring.boot.testcontainers)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.oracle.free)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
