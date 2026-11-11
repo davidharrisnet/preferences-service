@@ -19,6 +19,7 @@ public class TestcontainersConfiguration {
     @Bean
     @ServiceConnection
     OracleContainer oracleContainer() {
-        return new OracleContainer(ORACLE_IMAGE);
+        // The same database and login names as the local container (scripts/oracle-db.sh).
+        return new OracleContainer(ORACLE_IMAGE).withDatabaseName("preferences").withUsername("preferences");
     }
 }

@@ -102,11 +102,14 @@ Port 1525 leaves 1521 free for a locally installed Oracle, and 1522-1524 free fo
 docker run -d --name "$CONTAINER" \
     -p "127.0.0.1:$PORT:1521" \
     --env-file "$ENV_FILE" \
+    -e "ORACLE_DATABASE=PREFERENCES" \
     -v "$VOLUME:/opt/oracle/oradata" \
     "$IMAGE"
 ```
 
-`--env-file` hands the passwords to Docker without putting them on the command line. On its first start the image creates the login `APP_USER` (`preferences`) in the pluggable database `FREEPDB1`, and that login owns a schema of the same name.
+`--env-file` hands the passwords to Docker without putting them on the command line. `ORACLE_DATABASE` isn't secret, so it can go on the command line. On its first start the image creates a pluggable database named `PREFERENCES` and, inside it, the login `APP_USER` (`preferences`), which owns a schema of the same name. The service's tables live only there.
+
+The image also always creates its default pluggable database, `FREEPDB1`, with a copy of the same login. The service doesn't use it.
 
 **3.3.2** Wait until `docker logs` shows `DATABASE IS READY TO USE!`. The first start takes about a minute.
 
@@ -125,12 +128,12 @@ docker run -d --name "$CONTAINER" \
 **4.1.1** Build the URL from environment variables, with defaults for the local container:
 
 ```properties
-spring.datasource.url=jdbc:oracle:thin:@//${PREF_DB_HOST:localhost}:${PREF_DB_PORT:1525}/${PREF_DB_SERVICE:FREEPDB1}
+spring.datasource.url=jdbc:oracle:thin:@//${PREF_DB_HOST:localhost}:${PREF_DB_PORT:1525}/${PREF_DB_SERVICE:PREFERENCES}
 spring.datasource.username=${PREF_DB_USER:preferences}
 spring.datasource.password=${PREF_DB_PASSWORD}
 ```
 
-`FREEPDB1` is an Oracle service name, not a database name, so the URL uses the `@//host:port/service` form.
+`PREFERENCES` is the pluggable database's service name, so the URL uses the `@//host:port/service` form, not `@host:port:SID`.
 
 **4.1.2** Give the password no default. The application must get it from `PREF_DB_PASSWORD`, and it never goes in a repository file.
 
@@ -201,10 +204,12 @@ public class TestcontainersConfiguration {
     @Bean
     @ServiceConnection
     OracleContainer oracleContainer() {
-        return new OracleContainer(ORACLE_IMAGE);
+        return new OracleContainer(ORACLE_IMAGE).withDatabaseName("preferences").withUsername("preferences");
     }
 }
 ```
+
+`withDatabaseName` and `withUsername` give the test container the same database and login names as the local one.
 
 `@ServiceConnection` points `spring.datasource.*` at the container, so tests use neither the local database nor its password. `OracleContainer` comes from `org.testcontainers.oracle`. Using the same image as the local script means the tests run against the same Oracle version.
 
@@ -255,7 +260,7 @@ Started App in ... seconds
 | `Could not resolve placeholder 'PREF_DB_PASSWORD'` | The service was started without the password | Use `make run` or `make run-jar`, or export `PREF_DB_PASSWORD` yourself |
 | `ORA-12541` (no listener) | The container is stopped or still starting | `make db-start` |
 | `ORA-01017` (invalid username/password) | The password file was changed after the container was created | Restore the file, or `make db-remove && make db-start` (deletes the data) |
-| `ORA-12514` (unknown service) | Wrong service name | The service is `FREEPDB1` |
+| `ORA-12514` (unknown service) | Wrong service name, or a container created before the `PREFERENCES` database existed | The service is `PREFERENCES`; recreate an old container with `make db-remove && make db-start` (deletes its data) |
 | Tests fail with `Could not find a valid Docker environment` | Docker isn't running | Start Docker |
 
 ## 8. Next steps
