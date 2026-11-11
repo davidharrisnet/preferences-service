@@ -21,10 +21,14 @@ dependencies {
     implementation(libs.spring.boot.starter.jdbc)
     // Oracle JDBC driver (thin, pure Java, no Oracle client needed); the version comes from the Spring Boot BOM
     runtimeOnly(libs.oracle.ojdbc11)
+    // OpenAPI document (/v3/api-docs) and Swagger UI (/swagger-ui.html) for the REST endpoints
+    implementation(libs.springdoc.openapi.webmvc.ui)
     implementation(libs.guava)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.spring.boot.starter.webmvc.test)
+    // @DataJpaTest for the repository tests
+    testImplementation(libs.spring.boot.starter.data.jpa.test)
     // Tests that load the full context start a throwaway Oracle container (Docker required)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
